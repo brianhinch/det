@@ -1,5 +1,5 @@
 int i;
-const uint32_t DELAY_TIME = 100;
+const uint32_t DELAY_TIME = 1;
 
 long hallValue;
 
@@ -12,7 +12,7 @@ void loop() {
   hallValue = 0;
   for (i = 0; i < 1000; i++) {
     hallValue += hallRead();
-    delayMicroseconds(DELAY_TIME_US);
+    delay(DELAY_TIME);
   }
   Serial.println((double)hallValue / 1000.);
 }
