@@ -1,6 +1,16 @@
 #include "Zanshin_BME680.h"  // Include the BME680 Sensor library
 
-const uint32_t DELAY_TIME = 1000;
+int i;
+const uint32_t DELAY_TIME = 1;
+const int LOOP_COUNT = 100;
+
+long hallValue;
+
+const int BUTTON_PIN = 17;
+int buttonState;
+
+const int TOUCH_PIN = T0;
+long touchValue;
 
 BME680_Class BME680;  ///< Create an instance of the BME680 class
 
@@ -18,12 +28,14 @@ float altitude(const int32_t press, const float seaLevel) {
   */
   static float Altitude;
   Altitude =
-    44330.0 * (1.0 - pow(((float)press / 100.0) / seaLevel, 0.1903));  // Convert into meters
+      44330.0 * (1.0 - pow(((float)press / 100.0) / seaLevel, 0.1903));  // Convert into meters
   return (Altitude);
 }  // of method altitude()
 
 void setup() {
   Serial.begin(115200);  // Start serial port at Baud rate
+
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   while (!BME680.begin(I2C_STANDARD_MODE)) {  // Start BME680 using I2C, use first device found
     Serial.print("-  Unable to find BME680. Trying again in 5 seconds.\n");
@@ -33,27 +45,60 @@ void setup() {
   BME680.setOversampling(TemperatureSensor, Oversample16);  // Use enumerated type values
   BME680.setOversampling(HumiditySensor, Oversample16);     // Use enumerated type values
   BME680.setOversampling(PressureSensor, Oversample16);     // Use enumerated type values
-
+  
   BME680.setIIRFilter(IIR4);  // Use enumerated type values
-
+  
   BME680.setGas(320, 150);  // 320 degrees C for 150 milliseconds
-
-  delay(3000);  // wait 3s for serial monitor to open (optional)
 }
 
 void loop() {
 
-  static int32_t temp, humidity, pressure, gas;  // BME readings
-  static char buf[17];                           // sprintf text buffer
-  static float alt;                              // Temporary variable
-  static uint16_t loopCounter = 0;               // Display iterations
+  //
+  // Digital input
+  //
+
+  //
+  // BME
+  //
+  static int32_t  temp, humidity, pressure, gas;  // BME readings
+  static char     buf[17];                        // sprintf text buffer
+  static float    alt;                            // Temporary variable
 
   BME680.getSensorData(temp, humidity, pressure, gas);  // Get readings
-  alt = altitude(pressure);  // temp altitude
+  alt = altitude(pressure);
 
-  if (loopCounter++ != 0) {
-    Serial.print("Loop:");
-    Serial.print((loopCounter - 1) % 9999);  // Clamp to 9999,
+  long newTouchValue = 0;
+  long newHallValue = 0;
+  for (i = 0; i < LOOP_COUNT; i++) {
+
+    //
+    // Hall sensor
+    //
+    newHallValue += hallRead();
+
+    //
+    // Digital in
+    //
+    buttonState = digitalRead(BUTTON_PIN);
+
+    //
+    // Touch
+    //
+    newTouchValue += touchRead(TOUCH_PIN);
+
+    //
+    // Output
+    //
+    Serial.print("Hall:");
+    Serial.print((double)hallValue / (double)LOOP_COUNT);
+    Serial.print(",");
+
+    Serial.print("Touch:");
+    Serial.print((double)touchValue / (double)LOOP_COUNT);
+    Serial.print(",");
+
+    Serial.print("Button:");
+    Serial.print(buttonState);
     Serial.print(",");
 
     sprintf(buf, "TempC:00000%03d.%02d,",
@@ -78,4 +123,7 @@ void loop() {
 
     delay(DELAY_TIME);
   }
+  hallValue = newHallValue;
+  touchValue = newTouchValue;
+
 }
